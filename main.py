@@ -1,27 +1,40 @@
+# This code adds custom REST api handler at runtime to a running Streamlit app
+#
+
+from tornado.web import Application, RequestHandler
+from tornado.routing import Rule, PathMatches
+import gc
 import streamlit as st
-import requests
-import subprocess
-
-# Streamlit UI
-st.title('Simple Streamlit App')
-
-# Get user input for the Flask app's base URL
-flask_base_url = st.text_input('Enter Flask App Base URL', 'http://127.0.0.1:5000')
 
 
-# subprocess.run(['python', 'app.py'])
+@st.cache_resource()
+def setup_api_handler(uri, handler):
+    print("Setup Tornado. Should be called only once")
 
-# Button to send request to the Flask API
-if st.button('Send Request'):
-    try:
-        # Make a GET request to the Flask API
-        subprocess.run(['python', 'app.py'])
-        
-        flask_base_url = "http://192.168.2.192:5000"
-        response = requests.get(f'{flask_base_url}/api/demo')
-        
-        # Display the response
-        st.text(f'Response Status Code: {response.status_code}')
-        st.json(response.json())
-    except requests.RequestException as e:
-        st.text(f'Error: {e}')
+    # Get instance of Tornado
+    tornado_app = next(o for o in gc.get_referrers(Application) if o.__class__ is Application)
+
+    # Setup custom handler
+    tornado_app.wildcard_router.rules.insert(0, Rule(PathMatches(uri), handler))
+    
+# === Usage ======
+class HelloHandler(RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    def options(self):
+        # Handle pre-flight OPTIONS request
+        self.set_status(204)
+        self.finish()
+
+    def get(self):
+        self.write({'message': 'hello world'})
+
+    def post(self):
+        self.write({'message': 'post message'})
+
+
+# This setup will be run only once
+setup_api_handler('/api/hello', HelloHandler)
