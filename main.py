@@ -9,12 +9,14 @@ st.title('Simple Streamlit App')
 flask_base_url = st.text_input('Enter Flask App Base URL', 'http://127.0.0.1:5000')
 
 
-subprocess.run(['python', 'app.py'])
+# subprocess.run(['python', 'app.py'])
 
 # Button to send request to the Flask API
 if st.button('Send Request'):
     try:
         # Make a GET request to the Flask API
+        subprocess.run(['python', 'app.py'])
+        
         flask_base_url = "http://192.168.2.192:5000"
         response = requests.get(f'{flask_base_url}/api/demo')
         
